@@ -67,51 +67,56 @@ class LoRaBeacon(LoRa):
         self.c =  len(self.b)
         self.n = int( self.a / self.step)
 
-    def send_image(self):      
+    def send_image(self):     
 
-        # Normal packet  
-    	if self.i < self.n:     	
-            
-            # Appending bytearray from picture, 253 bytes
-    	    Z = self.b[self.i * self.step : self.i * self.step + self.step - 1]
+        if self.sending == 1:
 
-            # Appending packet number, 1 byte
-            Z.append(self.i) 
+            # Normal packet  
+            if self.i < self.n:
 
-    	    print "I'm on %d" % self.i
+                # Appending packet number, 1 byte
+                Z = bytearray([self.i,0])                
 
-            # Casting to List (needed)
-    	    E = list(Z)
-            print E
+                # Appending bytearray from picture, 253 bytes
+                Z[1:] = self.b[self.i * self.step : self.i * self.step + (self.step - 1)]                
+                print "I'm on %d" % self.i
+                print "Packet: [%d .. %d ]" % (int(self.b[self.i * self.step]), int(self.b[self.i * self.step + (self.step - 1)]))
 
-            # Imcrement Packet number
-    	    self.i += 1
+                # Casting to List (needed)
+                E = list(Z)     
 
-            # Init SPI transmission do radio
-    	    self.write_payload(E)
-    	    BOARD.led_on()
-    	    self.set_mode(MODE.TX)
+                # Increment Packet number
+                self.i += 1
 
-        # Last packet
-        elif self.i == self.n: 
+                # Init SPI transmission do radio
+                self.write_payload(E)
+                BOARD.led_on()
+                self.set_mode(MODE.TX)
 
-            print "Sending remaining bytes....."
+            # Last packet
+            elif self.i == self.n: 
 
-            # Appending bytearray from picture, X remaining bytes
-            Z = self.b[self.i * self.step:]
+                print "Sending remaining bytes....."           
+                # Appending packet number, 1 byte
+                Z = bytearray([self.i,0])
+                print "Packet: "
+                print self.b[self.i * self.step:] 
 
-            # Appending packet number, 1 byte
-            Z.append(self.i)
+                # Appending bytearray from picture, X remaining bytes
+                Z[1:] = self.b[self.i * self.step:]            
 
-            # Init SPI transmission do radio
-            self.write_payload(list(Z))
-            BOARD.led_on()
-            self.set_mode(MODE.TX)
+                # Casting to List (needed)
+                E = list(Z) 
 
-            # Reset global variables
-            self.re_init()
+                # Init SPI transmission do radio
+                self.write_payload(E)
+                BOARD.led_on()
+                self.set_mode(MODE.TX)
 
-            print "Waiting for new pic..."
+                # Reset global variables
+                self.re_init()
+
+                print "Waiting for new pic..."
 
     def on_tx_done(self):
         global args
@@ -132,7 +137,7 @@ class LoRaBeacon(LoRa):
 
 	    if self.sending == 0: # If not sending
 	    	print "Starting process"
-	    	#sleep(15)
+	    	sleep(1)
 
 	    	self.sending = 1
 	    	self.take_pic() # Take new picture

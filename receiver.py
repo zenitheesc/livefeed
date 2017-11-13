@@ -1,26 +1,5 @@
-#!/usr/bin/env python3
-
-""" A simple continuous receiver class. """
-
-# Copyright 2015 Mayer Analytics Ltd.
-#
-# This file is part of pySX127x.
-#
-# pySX127x is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
-# License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
-# pySX127x is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You can be released from the requirements of the license by obtaining a commercial license. Such a license is
-# mandatory as soon as you develop commercial activities involving pySX127x without disclosing the source code of your
-# own applications, or shipping pySX127x with a closed source product.
-#
-# You should have received a copy of the GNU General Public License along with pySX127.  If not, see
-# <http://www.gnu.org/licenses/>.
-
+# Software from Zenith Aerospace Group.
+# A simple LoRa Image Receiver.
 
 from time import sleep
 import time
@@ -35,6 +14,8 @@ from SX127x.board_config import BOARD
 import io
 from PIL import Image
 from array import array
+
+
 
 BOARD.setup()
 
@@ -63,47 +44,43 @@ class LoRaRcvCont(LoRa):
 	self.var = 0
 
     def on_rx_done(self):
-	if self.first_packet == 1:
-	    self.first_packet = 0
-	    self.millis = int(round(time.time() * 1000))
-	self.recv = int(round(time.time() * 1000))
+
+        # Get time of first packet received
+    	if self.first_packet == 1:
+    	    self.first_packet = 0
+    	    self.millis = int(round(time.time() * 1000))
+
+        # Reset timeout
+        self.recv = int(round(time.time() * 1000))
         BOARD.led_on()
-        #print("\nRxDone")
+        
         self.clear_irq_flags(RxDone=1)
         payload = self.read_payload(nocheck=True)
-        #print(bytes(payload).decode())
+        print "Var = %d" % self.var        
+        print "Packet = %d" % payload[0]
 
-	self.receiver_buffer += payload
-	print "Recebi o %d" % self.var
-	self.var = self.var + 1
+        # If packet number is correct
+        if payload[0] == self.var: 
+            self.receiver_buffer += payload[1:]
+            print "Correctly received the %d packet" % self.var
+            print "Packet: [%d .. %d ]" % (int(payload[1]), int(payload[len(payload)-1]))
+            self.var = self.var + 1
+        elif payload[0] - self.var > 0:
+            print "Missed a packet... blacking-out..."
+
+            # Black out all missed packets
+            for x in xrange(1, payload[0] - self.var):         
+                self.receiver_buffer += list([0] * 253)
+
+            print "Blacked-out %d packets..." % (int(payload[0]) - self.vars)
+            self.receiver_buffer += payload[1:]   
+            self.var = payload[0] + 1;     
+
+        # LoRa stuff
         self.set_mode(MODE.SLEEP)
         self.reset_ptr_rx()
         BOARD.led_off()
         self.set_mode(MODE.RXCONT)
-
-    def on_tx_done(self):
-        print("\nTxDone")
-        print(self.get_irq_flags())
-
-    #def on_cad_done(self):
-        #print("\non_CadDone")
-        #print(self.get_irq_flags())
-
-    #def on_rx_timeout(self):
-        #print("\non_RxTimeout")
-        #print(self.get_irq_flags())
-
-    #def on_valid_header(self):
-        #print("\non_ValidHeader")
-        #print(self.get_irq_flags())
-
-    #def on_payload_crc_error(self):
-        #print("\non_PayloadCrcError")
-        #print(self.get_irq_flags())
-
-    #def on_fhss_change_channel(self):
-        #print("\non_FhssChangeChannel")
-        #print(self.get_irq_flags())
 
     def start(self):
         self.reset_ptr_rx()
@@ -111,11 +88,12 @@ class LoRaRcvCont(LoRa):
 	a = 1	
 	print "Running!"
         while True:
+            sleep(0.1)
             rssi_value = self.get_rssi_value()
             status = self.get_modem_status()
-            sys.stdout.flush()
-            sys.stdout.write("\r%d %d %d" % (rssi_value, status['rx_ongoing'], status['modem_clear']))
-	    if  int(round(time.time() * 1000)) - self.recv >= 5000 and self.first_packet == 0:
+            #sys.stdout.flush()
+            #sys.stdout.write("\r%d %d %d" % (rssi_value, status['rx_ongoing'], status['modem_clear']))
+	    if  int(round(time.time() * 1000)) - self.recv >= 3000 and self.first_packet == 0:
 		#a = 0
 		#print type(self.millis)
 		print "ESSA PORRA DUROU::::"
