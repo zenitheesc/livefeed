@@ -88,7 +88,7 @@ class LoRaBeacon(LoRa):
                 # Increment Packet number
                 self.i += 1
 
-                # Init SPI transmission do radio
+                # Init SPI transmission to radio
                 self.write_payload(E)
                 BOARD.led_on()
                 self.set_mode(MODE.TX)
