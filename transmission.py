@@ -26,7 +26,7 @@ class LoRaBeacon(LoRa):
     i = 0
     last = 1
     n=0
-    step = 254
+    step = 253
     sending = 0
     resto = 0
   
@@ -47,7 +47,7 @@ class LoRaBeacon(LoRa):
     	self.i = 0
     	self.last = 1
     	self.n=0
-    	self.step = 254
+    	self.step = 253
         self.sending = 0
         self.resto  = 0
     
@@ -71,20 +71,21 @@ class LoRaBeacon(LoRa):
 
         if self.sending == 1:
 
-            # Normal packet  
+            # Normal packet
             if self.i < self.n:
 
                 # Appending packet number, 1 byte
-                Z = bytearray([self.i,0])                
+                Z = bytearray([self.i,0])
 
                 # Appending bytearray from picture, 253 bytes
-                Z[1:] = self.b[self.i * self.step : self.i * self.step + (self.step - 1)]                
+                Z[1:] = self.b[self.i * self.step : self.i * self.step + self.step]                
                 print "I'm on %d" % self.i
                 print "Packet: [%d .. %d ]" % (int(self.b[self.i * self.step]), int(self.b[self.i * self.step + (self.step - 1)]))
+                print "Real vector: "                
 
                 # Casting to List (needed)
                 E = list(Z)     
-
+                print len(E)
                 # Increment Packet number
                 self.i += 1
 
