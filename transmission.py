@@ -56,7 +56,8 @@ class LoRaBeacon(LoRa):
     	print "Taking Pic...."
 
         # raspistill command for taking pictures from Raspberry Cam
-    	os.system("raspistill -th none -vf -q 10 -w 640 -h 480 -o currentPicture.jpg")
+    	os.system("raspistill -th none -vf -w 640 -h 480 -q 10 -o currentPicture.jpg")
+        os.system("convert currentPicture.jpg teste.bmp")
 
         # Open saved picture
     	with open("currentPicture.jpg","rb") as imageFile:
@@ -80,12 +81,10 @@ class LoRaBeacon(LoRa):
                 # Appending bytearray from picture, 253 bytes
                 Z[1:] = self.b[self.i * self.step : self.i * self.step + self.step]                
                 print "I'm on %d" % self.i
-                print "Packet: [%d .. %d ]" % (int(self.b[self.i * self.step]), int(self.b[self.i * self.step + (self.step - 1)]))
-                print "Real vector: "                
 
                 # Casting to List (needed)
                 E = list(Z)     
-                print len(E)
+                
                 # Increment Packet number
                 self.i += 1
 
@@ -100,8 +99,7 @@ class LoRaBeacon(LoRa):
                 print "Sending remaining bytes....."           
                 # Appending packet number, 1 byte
                 Z = bytearray([self.i,0])
-                print "Packet: "
-                print self.b[self.i * self.step:] 
+                print "Packet: %d" % self.i
 
                 # Appending bytearray from picture, X remaining bytes
                 Z[1:] = self.b[self.i * self.step:]            
@@ -138,7 +136,7 @@ class LoRaBeacon(LoRa):
 
 	    if self.sending == 0: # If not sending
 	    	print "Starting process"
-	    	sleep(1)
+	    	sleep(4)
 
 	    	self.sending = 1
 	    	self.take_pic() # Take new picture

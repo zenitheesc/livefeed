@@ -12,8 +12,9 @@ from SX127x.LoRa import *
 from SX127x.LoRaArgumentParser import LoRaArgumentParser
 from SX127x.board_config import BOARD
 import io
-from PIL import Image
+from PIL import Image, ImageFile
 from array import array
+from random import randint
 
 
 
@@ -29,6 +30,7 @@ class LoRaRcvCont(LoRa):
     millis = 0
     recv = 0
     var = 0
+    missed_packets = []
 
     def __init__(self, verbose=False):
 
@@ -37,11 +39,12 @@ class LoRaRcvCont(LoRa):
         self.set_dio_mapping([0] * 6)
 
     def re_init(self):
-	self.receiver_buffer = []
+        self.receiver_buffer = []
     	self.first_packet = 1
     	self.millis = 0
     	self.recv = 0
-	self.var = 0
+        self.var = 0
+        self.missed_packets = []
 
     def on_rx_done(self):
 
@@ -63,16 +66,18 @@ class LoRaRcvCont(LoRa):
         if payload[0] == self.var: 
             self.receiver_buffer += payload[1:]
             print "Correctly received the %d packet" % self.var
-            print "Packet: [%d .. %d ]" % (int(payload[1]), int(payload[len(payload)-1]))
             self.var = self.var + 1
         elif payload[0] - self.var > 0:
             print "Missed a packet... blacking-out..."
 
             # Black out all missed packets
-            for x in xrange(1, payload[0] - self.var):         
+            for x in xrange(0, int(payload[0]) - self.var):     
+                self.missed_packets.append(self.var + x)
                 self.receiver_buffer += list([0] * 253)
 
-            print "Blacked-out %d packets..." % (int(payload[0]) - self.vars)
+            print "Missed packets: "
+            print self.missed_packets
+            print "Blacked-out %d packets..." % (int(payload[0]) - self.var)
             self.receiver_buffer += payload[1:]   
             self.var = payload[0] + 1;     
 
@@ -82,64 +87,88 @@ class LoRaRcvCont(LoRa):
         BOARD.led_off()
         self.set_mode(MODE.RXCONT)
 
+    def check_finished(self):
+        if int(round(time.time() * 1000)) - self.recv >= 3000 and self.first_packet == 0:
+            return True
+        else:
+            return False
+
+    def print_sumary(self):
+        print "Total duration: %d seconds" % (int(round(time.time() * 1000)) - self.millis)
+        print "Total size of image: %d bytes" % sys.getsizeof(bytearray(self.receiver_buffer))
+
+    def save_image(self):
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        try:
+            image = Image.open(io.BytesIO(bytearray(self.receiver_buffer)))
+            image.save("LivePicture.png")
+        except Exception as e:
+            print "Error opening image!!"
+            print e
+            raise e        
+        finally:
+            print "Image saved!!"
+
+    def send_email(self):
+        msg = email.mime.Multipart.MIMEMultipart()
+        msg['Subject'] = 'First Live Photo'
+        msg['From'] = 'zenith.eesc@gmail.com'
+        msg['To'] = 'zenith.eesc@gmail.com'
+
+        directory = 'LivePicture.png'
+
+        # Split de directory into fields separated by / to substract filename
+
+        spl_dir=directory.split('/')
+
+        # We attach the name of the file to filename by taking the last
+        # position of the fragmented string, which is, indeed, the name
+        # of the file we've selected
+
+        filename=spl_dir[len(spl_dir)-1]
+
+        # We'll do the same but this time to extract the file format (pdf, epub, docx...)
+
+        spl_type=directory.split('.')
+
+        type=spl_type[len(spl_type)-1]
+
+        fp=open(directory,'rb')
+        att = email.mime.application.MIMEApplication(fp.read(),_subtype=type)
+        fp.close()
+        att.add_header('Content-Disposition','attachment',filename=filename)
+        msg.attach(att)
+
+        # send via Gmail server
+        # NOTE: my ISP, Centurylink, seems to be automatically rewriting
+        # port 25 packets to be port 587 and it is trashing port 587 packets.
+        # So, I use the default port 25, but I authenticate.
+        s = smtplib.SMTP('smtp.gmail.com:587')
+        s.starttls()
+        s.login('zenith.eesc@gmail.com','zenith2016')
+        s.sendmail('zenith.eesc@gmail.com','zenith.eesc@gmail.com', msg.as_string())
+        s.quit()
+        print "Image sent to email."
+
     def start(self):
+
         self.reset_ptr_rx()
         self.set_mode(MODE.RXCONT)
-	a = 1	
-	print "Running!"
+    	print "Running!"        
         while True:
-            sleep(0.1)
-            rssi_value = self.get_rssi_value()
-            status = self.get_modem_status()
-            #sys.stdout.flush()
-            #sys.stdout.write("\r%d %d %d" % (rssi_value, status['rx_ongoing'], status['modem_clear']))
-	    if  int(round(time.time() * 1000)) - self.recv >= 3000 and self.first_packet == 0:
-		#a = 0
-		#print type(self.millis)
-		print "ESSA PORRA DUROU::::"
-		print int(round(time.time() * 1000)) - self.millis
-		print "TAMANHO DESSA PORRA %d" % sys.getsizeof(bytearray(self.receiver_buffer))
-		image = Image.open(io.BytesIO(bytearray(self.receiver_buffer)))
-        	image.save("pybrocado.png")
-		msg = email.mime.Multipart.MIMEMultipart()
-		msg['Subject'] = 'First Live Photo'
-		msg['From'] = 'zenith.eesc@gmail.com'
-		msg['To'] = 'zenith.eesc@gmail.com'
 
-		directory = 'pybrocado.png'
-		 
-		# Split de directory into fields separated by / to substract filename
-		 
-		spl_dir=directory.split('/')
-		 
-		# We attach the name of the file to filename by taking the last
-		# position of the fragmented string, which is, indeed, the name
-		# of the file we've selected
-		 
-		filename=spl_dir[len(spl_dir)-1]
-		 
-		# We'll do the same but this time to extract the file format (pdf, epub, docx...)
-		 
-		spl_type=directory.split('.')
-		 
-		type=spl_type[len(spl_type)-1]
-		 
-		fp=open(directory,'rb')
-		att = email.mime.application.MIMEApplication(fp.read(),_subtype=type)
-		fp.close()
-		att.add_header('Content-Disposition','attachment',filename=filename)
-		msg.attach(att)
-		 
-		# send via Gmail server
-		# NOTE: my ISP, Centurylink, seems to be automatically rewriting
-		# port 25 packets to be port 587 and it is trashing port 587 packets.
-		# So, I use the default port 25, but I authenticate.
-		s = smtplib.SMTP('smtp.gmail.com:587')
-		s.starttls()
-		s.login('zenith.eesc@gmail.com','zenith2016')
-		s.sendmail('zenith.eesc@gmail.com','zenith.eesc@gmail.com', msg.as_string())
-		s.quit()
-		self.re_init()
+            sleep(0.1)
+                        
+            if self.check_finished():
+                
+                self.print_sumary()
+                
+                self.save_image()
+
+                self.send_email()
+                
+                self.re_init()
+                
 
 
 lora = LoRaRcvCont(verbose=False)
