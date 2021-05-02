@@ -1,5 +1,5 @@
-<h1 align="center" style="color:white; background-color:black">Live Feed</h1>
-<h4 align="center">Image transmission</h4>
+<h1 align="center" style="color:white; background-color:black">LiveFeed</h1>
+<h4 align="center">A simple LoRa Image Transmiter</h4>
 
 <p align="center">
 	<a href="http://zenith.eesc.usp.br/">
@@ -33,24 +33,34 @@
 
 <p align="center">
     <a href="#environment-and-tools">Environment and Tools</a> •
-    <a href="#steps-to-run-and-debug">Steps to run and debug</a> •
-    <a href="#how-to-contribute">How to contribute?</a> •
+    <a href="#steps-to-run-and-debug">Steps to run and debug</a> 
 </p>
 
 ## Environment and tools
 
-`Add list of dependencies and software needed to run this project (if possible add the versions that were used in development).`
+LiveFeed is a software project aimed to send images, in real-time, from the probe to our Ground Station. In the development, we used a **Raspberry Pi model 3B** in the probe, as well as an **8MP Raspberry Pi Camera** with a 160º wide-angle lens. The Raspberry Pi had to capture, compress and send the images during the flight. 
+
+For transmitting this data via radio-frequency (RF), we used a chip with **LoRa** technology, SX127x, widely employed on Internet of Things (IoT) applications. In our Ground Station, another Raspberry Pi and LoRa chip were receiving the signal with a Yagi antenna. 
+
+Experimentally, the system developed worked well with the probe on the ground and close to the basis, a few tens of meters. But the system stopped working when the probe ascended to higher altitudes, because the receiver lost communication, due to the low power used in the transmission, combined with low-gain antennas. Nevertheless, this subproject has been shown innovative and promising, challenging the group to improve its performance for the next flight, creating a reliable image transmitting system. 
 
 ## Steps to run and debug
 
-`A simple list of steps indicating how one can run and test the project.`
+In order to run this project, you must have two Raspberry Pi, two SX127x, and a Raspberry Pi Camera. One Raspberry Pi must be connected to the SX127x to be the Ground Station and the other one must be connected to the other SX127x and the Raspberry Pi Camera. 
 
-## How to contribute
+Moreover, both Raspberry Pi must have [Python2](https://www.python.org/downloads/) and all dependencies installed.
 
-`(optional, depends on the project) list of simple rules to help people work on the project.`
+In the Ground Station, run the command:
 
-`Examples: How to format a pull request\n How to format an issue`
+```
+python2 receiver.py
+```
 
+And in the other Raspberry Pi, run the command:
+
+```
+python2 transmission.py
+```
 ---
 
 <p align="center">
